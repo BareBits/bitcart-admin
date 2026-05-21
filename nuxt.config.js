@@ -175,6 +175,21 @@ export default {
       if (ctx.isDev) config.resolve.symlinks = false
     },
     transpile: transpileDeps,
+    // Prefix webpack's publicPath with the same base path the router
+    // uses. Without this, async chunks (e.g. workbox / PWA, lazy
+    // route components) are requested at `/_nuxt/{hash}.js`. That
+    // works on a root-path install, but on an `/admin`-rooted deploy
+    // (BITCART_ADMIN_ROOTPATH=/admin) the chunks actually live at
+    // `/admin/_nuxt/...` and the `/_nuxt/...` request 404s. The 404
+    // breaks the initial Vue mount of any route whose chunk isn't
+    // already in the Service Worker's pre-cache — most visibly on
+    // hard reload (Cmd-Shift-R), where the SW is bypassed and the
+    // missing chunk causes Nuxt to render its built-in 404 page.
+    //
+    // We strip the trailing slash off BITCART_ADMIN_ROOTPATH before
+    // joining so that the default "/" doesn't produce "//_nuxt/".
+    publicPath:
+      (process.env.BITCART_ADMIN_ROOTPATH || "/").replace(/\/$/, "") + "/_nuxt/",
   },
   serverMiddleware: [
     { path: "/stores/", handler: "~/server-middleware/shopify.js" },
